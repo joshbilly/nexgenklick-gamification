@@ -1,26 +1,114 @@
+@import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;500;600;700&family=Comic+Neue:wght@300;400;700&display=swap');
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --color-primary: #E11D48;
+  --color-on-primary: #FFFFFF;
+  --color-secondary: #FB7185;
+  --color-accent: #2563EB;
+  --color-background: #FFF1F2;
+  --color-foreground: #881337;
+  --color-muted: #F0ECF2;
+  --color-border: #FECDD3;
+  --color-destructive: #DC2626;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+@layer base {
+  h1, h2, h3, h4 {
+    font-family: "Baloo 2", sans-serif;
+  }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  body {
+    font-family: "Comic Neue", cursive;
+    background-color: #FFF1F2;
+    color: #881337;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer utilities {
+  .clay-card {
+    background: linear-gradient(160deg, #ffffff 0%, #fff5f6 100%);
+    border-radius: 2rem;
+    border: 1.5px solid #FECDD3;
+    box-shadow:
+      0 8px 32px rgba(225, 29, 72, 0.18),
+      0 2px 8px rgba(225, 29, 72, 0.10),
+      0 0 0 0.5px rgba(225, 29, 72, 0.06),
+      inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  }
+
+  .clay-card-hover {
+    transition: transform 200ms ease-out, box-shadow 200ms ease-out;
+  }
+
+  .clay-card-hover:hover {
+    transform: scale(1.03);
+    box-shadow:
+      0 16px 48px rgba(225, 29, 72, 0.25),
+      0 4px 16px rgba(225, 29, 72, 0.15),
+      inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  }
+
+  .clay-card-hover:active {
+    transform: scale(0.97);
+  }
+
+  .btn-rose {
+    background: linear-gradient(135deg, #fb7185, #e11d48);
+    color: white;
+    border-radius: 9999px;
+    font-family: "Baloo 2", sans-serif;
+    font-weight: 600;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 16px rgba(225, 29, 72, 0.3);
+    cursor: pointer;
+    transition: transform 200ms ease-out, box-shadow 200ms ease-out;
+  }
+
+  .btn-rose:hover {
+    transform: scale(1.03);
+    box-shadow: 0 8px 24px rgba(225, 29, 72, 0.4);
+  }
+
+  .btn-rose:active {
+    transform: scale(0.97);
+  }
+
+  .btn-rose:focus {
+    outline: none;
+    ring-width: 2px;
+    ring-color: #fb7185;
+  }
+
+  .input-clay {
+    border: 1.5px solid #FECDD3;
+    border-radius: 1rem;
+    background: #fff8f9;
+    font-family: "Comic Neue", cursive;
+    transition: border-color 150ms ease-out, box-shadow 150ms ease-out;
+  }
+
+  .input-clay:focus {
+    outline: none;
+    border-color: #fb7185;
+    box-shadow: 0 0 0 3px rgba(251, 113, 133, 0.2);
+  }
+}
+
+@keyframes badgePopIn {
+  0% {
+    transform: scale(0) rotate(-10deg);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.1) rotate(5deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
 }

@@ -1,36 +1,57 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# NexGenKlick Gamification
 
-## Getting Started
+NexGenKlick Gamification is a school achievement tracking app that lets teachers award students points for accomplishments, students upload their own achievements, and parents view progress — all in real time. Students earn badges as they accumulate points, with animated celebrations when a new badge is unlocked. Built with Next.js 16 App Router, Tailwind CSS v4, React 19, and Supabase.
 
-First, run the development server:
+## Prerequisites
+
+- Node.js 18+
+- A [Supabase](https://supabase.com) account (free tier works fine)
+- npm
+
+## Supabase Setup
+
+1. Create a new Supabase project at [supabase.com](https://supabase.com).
+2. In the Supabase dashboard, navigate to **SQL Editor**.
+3. Paste the contents of `supabase/schema.sql` and run it to create all tables and seed the badge data.
+4. Optionally, paste and run `supabase/seed.sql` to populate three sample students with achievements and earned badges.
+
+## Configure Environment Variables
+
+1. Copy the example env file:
+   ```bash
+   cp .env.local.example .env.local
+   ```
+2. Open `.env.local` and fill in your Supabase project URL and anon key (found in **Project Settings > API** in the Supabase dashboard):
+   ```
+   NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+   ```
+
+## Run Locally
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Key routes
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Route | Description |
+|---|---|
+| `/` | Landing page with links to all views |
+| `/student/[id]` | Student profile — view achievements, badges, upload new achievements |
+| `/parent/[studentId]` | Parent read-only view of student progress |
+| `/admin` | Admin dashboard — manage students, add achievements, view charts |
 
-## Learn More
+Use the student IDs from your seeded data (or the UUIDs in `supabase/seed.sql`) for the `/student/` and `/parent/` routes. The landing page links to `/student/demo` and `/parent/demo` as placeholder routes.
 
-To learn more about Next.js, take a look at the following resources:
+## Deploy to Vercel
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. Push the repo to GitHub.
+2. Import the project in [Vercel](https://vercel.com/new).
+3. Add the following environment variables in Vercel's project settings:
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+4. Deploy. Vercel will automatically run `npm run build`.
