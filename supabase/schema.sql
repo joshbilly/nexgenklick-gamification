@@ -1,5 +1,5 @@
 -- Students
-create table students (
+create table if not exists students (
   id uuid primary key default gen_random_uuid(),
   name text not null,
   grade text not null,
@@ -9,7 +9,7 @@ create table students (
 );
 
 -- Achievements
-create table achievements (
+create table if not exists achievements (
   id uuid primary key default gen_random_uuid(),
   student_id uuid references students(id) on delete cascade,
   title text not null,
@@ -20,7 +20,7 @@ create table achievements (
 );
 
 -- Badges
-create table badges (
+create table if not exists badges (
   id uuid primary key default gen_random_uuid(),
   name text not null,
   icon_emoji text not null,
@@ -29,20 +29,23 @@ create table badges (
 );
 
 -- Student Badges (earned)
-create table student_badges (
+create table if not exists student_badges (
   id uuid primary key default gen_random_uuid(),
   student_id uuid references students(id) on delete cascade,
   badge_id uuid references badges(id) on delete cascade,
   earned_at timestamptz default now()
 );
 
--- Seed badges
-insert into badges (name, icon_emoji, description, points_required) values
-  ('Starter', '🌱', 'First achievement uploaded', 10),
-  ('Rising Star', '⭐', 'Earned 50 points', 50),
-  ('Achiever', '🏆', 'Earned 100 points', 100),
-  ('Champion', '🥇', 'Earned 250 points', 250),
-  ('Legend', '🌟', 'Earned 500 points', 500);
+-- Seed badges (skip if already present)
+insert into badges (name, icon_emoji, description, points_required)
+select * from (values
+  ('Starter',     '🌱', 'First achievement uploaded', 10),
+  ('Rising Star', '⭐', 'Earned 50 points',           50),
+  ('Achiever',    '🏆', 'Earned 100 points',          100),
+  ('Champion',    '🥇', 'Earned 250 points',          250),
+  ('Legend',      '🌟', 'Earned 500 points',          500)
+) as v(name, icon_emoji, description, points_required)
+where not exists (select 1 from badges limit 1);
 
 -- ============================================================
 -- FEATURE ADDITIONS
@@ -142,17 +145,20 @@ create table if not exists classes (
   created_at timestamptz default now()
 );
 
--- Seed cosmetics
-insert into cosmetics (name, type, emoji_or_css, unlock_points, preview_color) values
-  ('Rose Border', 'border', 'border-rose-500 border-4', 50, '#F43F5E'),
-  ('Gold Border', 'border', 'border-yellow-400 border-4', 200, '#FACC15'),
-  ('Purple Glow', 'border', 'border-purple-500 border-4 shadow-purple-300', 100, '#A855F7'),
-  ('Sunset Background', 'background', 'bg-gradient-to-br from-orange-100 to-pink-100', 75, '#FED7AA'),
-  ('Sky Background', 'background', 'bg-gradient-to-br from-blue-100 to-cyan-100', 75, '#BAE6FD'),
+-- Seed cosmetics (skip if already present)
+insert into cosmetics (name, type, emoji_or_css, unlock_points, preview_color)
+select * from (values
+  ('Rose Border',       'border',     'border-rose-500 border-4',                        50,  '#F43F5E'),
+  ('Gold Border',       'border',     'border-yellow-400 border-4',                      200, '#FACC15'),
+  ('Purple Glow',       'border',     'border-purple-500 border-4 shadow-purple-300',    100, '#A855F7'),
+  ('Sunset Background', 'background', 'bg-gradient-to-br from-orange-100 to-pink-100',   75,  '#FED7AA'),
+  ('Sky Background',    'background', 'bg-gradient-to-br from-blue-100 to-cyan-100',     75,  '#BAE6FD'),
   ('Galaxy Background', 'background', 'bg-gradient-to-br from-purple-200 to-indigo-200', 150, '#DDD6FE'),
-  ('Star Crown', 'accessory', '👑', 250, '#FCD34D'),
-  ('Fire Aura', 'accessory', '🔥', 100, '#FB923C'),
-  ('Diamond', 'accessory', '💎', 500, '#67E8F9');
+  ('Star Crown',        'accessory',  '👑',                                              250, '#FCD34D'),
+  ('Fire Aura',         'accessory',  '🔥',                                              100, '#FB923C'),
+  ('Diamond',           'accessory',  '💎',                                              500, '#67E8F9')
+) as v(name, type, emoji_or_css, unlock_points, preview_color)
+where not exists (select 1 from cosmetics limit 1);
 
 -- Seed 3 classes (DEMO-09)
 insert into classes (id, class_name, teacher_name) values
@@ -161,16 +167,7 @@ insert into classes (id, class_name, teacher_name) values
   ('class-c', 'Star Class', 'Ms. Park')
 on conflict (id) do nothing;
 
--- Seed a sample challenge
-insert into challenges (title, description, deadline, target_count, category, is_class_wide, class_id, points_reward)
-values ('Science Week Sprint', 'Submit 3 science achievements before the deadline!', now() + interval '7 days', 3, 'Science', true, 'class-a', 25);
-
--- Seed goals for students
-insert into goals (student_id, title, description, target_count, category, deadline)
-select id, 'Reading Challenge', 'Complete 3 reading achievements this month', 3, 'Reading', (current_date + interval '30 days')::date
-from students where name = 'Alex Johnson';
-
--- Update seed students with class and parent email
+-- Update seed students with class and parent email (safe on existing data)
 update students set class_id = 'class-a', parent_email = 'parent.alex@example.com' where name = 'Alex Johnson';
 update students set class_id = 'class-a', parent_email = 'parent.maya@example.com' where name = 'Maya Patel';
 update students set class_id = 'class-b', parent_email = 'parent.carlos@example.com' where name = 'Carlos Rivera';
