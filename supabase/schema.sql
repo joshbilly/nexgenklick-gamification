@@ -62,16 +62,20 @@ alter table students add column if not exists class_id text default 'Class A';
 -- Achievement category tagging
 alter table achievements add column if not exists category text default 'General';
 
--- Tiered badges
-alter table badges add column if not exists bronze_threshold integer default 1;
-alter table badges add column if not exists silver_threshold integer default 5;
-alter table badges add column if not exists gold_threshold integer default 15;
+-- Tiered badges — thresholds per DEMO-02 spec: Bronze=5, Silver=15, Gold=30
+alter table badges add column if not exists bronze_threshold integer default 5;
+alter table badges add column if not exists silver_threshold integer default 15;
+alter table badges add column if not exists gold_threshold integer default 30;
+
+-- Update any existing badges to use spec thresholds
+update badges set bronze_threshold = 5, silver_threshold = 15, gold_threshold = 30
+where bronze_threshold != 5 or silver_threshold != 15 or gold_threshold != 30;
 
 -- Track tier per earned badge
 alter table student_badges add column if not exists tier text default 'bronze';
 alter table student_badges add column if not exists progress integer default 0;
 
--- Challenges
+-- Challenges (DEMO-10: badge_reward_id and points_reward added per spec)
 create table if not exists challenges (
   id uuid primary key default gen_random_uuid(),
   title text not null,
@@ -79,8 +83,11 @@ create table if not exists challenges (
   deadline timestamptz not null,
   target_count integer not null default 3,
   category text,
+  scope text default 'class',
   is_class_wide boolean default false,
   class_id text,
+  badge_reward_id uuid references badges(id),
+  points_reward integer default 0,
   created_by text default 'admin',
   created_at timestamptz default now()
 );
@@ -127,6 +134,14 @@ create table if not exists goals (
   created_at timestamptz default now()
 );
 
+-- Classes table (DEMO-09) — stores class name and teacher name
+create table if not exists classes (
+  id text primary key,
+  class_name text not null,
+  teacher_name text not null,
+  created_at timestamptz default now()
+);
+
 -- Seed cosmetics
 insert into cosmetics (name, type, emoji_or_css, unlock_points, preview_color) values
   ('Rose Border', 'border', 'border-rose-500 border-4', 50, '#F43F5E'),
@@ -139,9 +154,16 @@ insert into cosmetics (name, type, emoji_or_css, unlock_points, preview_color) v
   ('Fire Aura', 'accessory', '🔥', 100, '#FB923C'),
   ('Diamond', 'accessory', '💎', 500, '#67E8F9');
 
+-- Seed 3 classes (DEMO-09)
+insert into classes (id, class_name, teacher_name) values
+  ('class-a', 'Sunshine Class', 'Ms. Thompson'),
+  ('class-b', 'Rainbow Class', 'Mr. Reyes'),
+  ('class-c', 'Star Class', 'Ms. Park')
+on conflict (id) do nothing;
+
 -- Seed a sample challenge
-insert into challenges (title, description, deadline, target_count, category, is_class_wide, class_id)
-values ('Science Week Sprint', 'Submit 3 science achievements before the deadline!', now() + interval '7 days', 3, 'Science', true, 'Class A');
+insert into challenges (title, description, deadline, target_count, category, is_class_wide, class_id, points_reward)
+values ('Science Week Sprint', 'Submit 3 science achievements before the deadline!', now() + interval '7 days', 3, 'Science', true, 'class-a', 25);
 
 -- Seed goals for students
 insert into goals (student_id, title, description, target_count, category, deadline)
@@ -149,6 +171,101 @@ select id, 'Reading Challenge', 'Complete 3 reading achievements this month', 3,
 from students where name = 'Alex Johnson';
 
 -- Update seed students with class and parent email
-update students set class_id = 'Class A', parent_email = 'parent.alex@example.com' where name = 'Alex Johnson';
-update students set class_id = 'Class A', parent_email = 'parent.maya@example.com' where name = 'Maya Patel';
-update students set class_id = 'Class B', parent_email = 'parent.carlos@example.com' where name = 'Carlos Rivera';
+update students set class_id = 'class-a', parent_email = 'parent.alex@example.com' where name = 'Alex Johnson';
+update students set class_id = 'class-a', parent_email = 'parent.maya@example.com' where name = 'Maya Patel';
+update students set class_id = 'class-b', parent_email = 'parent.carlos@example.com' where name = 'Carlos Rivera';
+
+-- ============================================================
+-- ROW LEVEL SECURITY (DEMO-15)
+-- Policies enforce: students see own data, parents see child data,
+-- admin sees all. Demo uses permissive anon policies — restrict in production.
+-- ============================================================
+
+alter table students enable row level security;
+alter table achievements enable row level security;
+alter table badges enable row level security;
+alter table student_badges enable row level security;
+alter table challenges enable row level security;
+alter table challenge_participation enable row level security;
+alter table cosmetics enable row level security;
+alter table student_cosmetics enable row level security;
+alter table goals enable row level security;
+alter table classes enable row level security;
+
+-- Drop existing policies before recreating (idempotent)
+do $$ begin
+  drop policy if exists "demo_anon_select" on students;
+  drop policy if exists "demo_anon_all" on students;
+  drop policy if exists "demo_anon_select" on achievements;
+  drop policy if exists "demo_anon_all" on achievements;
+  drop policy if exists "demo_anon_select" on badges;
+  drop policy if exists "demo_anon_select" on student_badges;
+  drop policy if exists "demo_anon_all" on student_badges;
+  drop policy if exists "demo_anon_select" on challenges;
+  drop policy if exists "demo_anon_all" on challenges;
+  drop policy if exists "demo_anon_select" on challenge_participation;
+  drop policy if exists "demo_anon_all" on challenge_participation;
+  drop policy if exists "demo_anon_select" on cosmetics;
+  drop policy if exists "demo_anon_select" on student_cosmetics;
+  drop policy if exists "demo_anon_all" on student_cosmetics;
+  drop policy if exists "demo_anon_select" on goals;
+  drop policy if exists "demo_anon_all" on goals;
+  drop policy if exists "demo_anon_select" on classes;
+exception when others then null;
+end $$;
+
+-- DEMO: permissive anon policies (read + write for all tables)
+-- Production: replace with auth.uid()-scoped policies (see comments below)
+create policy "demo_anon_select" on students for select using (true);
+create policy "demo_anon_all"    on students for all using (true) with check (true);
+
+create policy "demo_anon_select" on achievements for select using (true);
+create policy "demo_anon_all"    on achievements for all using (true) with check (true);
+
+create policy "demo_anon_select" on badges for select using (true);
+
+create policy "demo_anon_select" on student_badges for select using (true);
+create policy "demo_anon_all"    on student_badges for all using (true) with check (true);
+
+create policy "demo_anon_select" on challenges for select using (true);
+create policy "demo_anon_all"    on challenges for all using (true) with check (true);
+
+create policy "demo_anon_select" on challenge_participation for select using (true);
+create policy "demo_anon_all"    on challenge_participation for all using (true) with check (true);
+
+create policy "demo_anon_select" on cosmetics for select using (true);
+
+create policy "demo_anon_select" on student_cosmetics for select using (true);
+create policy "demo_anon_all"    on student_cosmetics for all using (true) with check (true);
+
+create policy "demo_anon_select" on goals for select using (true);
+create policy "demo_anon_all"    on goals for all using (true) with check (true);
+
+create policy "demo_anon_select" on classes for select using (true);
+
+-- ============================================================
+-- PRODUCTION RLS EXAMPLES (uncomment after enabling Supabase Auth)
+-- ============================================================
+-- Students read their own row only:
+-- create policy "students_read_own" on students for select
+--   using (auth.uid()::text = id::text or (auth.jwt() ->> 'role') = 'admin');
+--
+-- Parents read their child via parent_email match:
+-- create policy "parents_read_child" on students for select
+--   using ((auth.jwt() ->> 'email') = parent_email or (auth.jwt() ->> 'role') = 'admin');
+--
+-- Admin full access:
+-- create policy "admin_all" on students for all
+--   using ((auth.jwt() ->> 'role') = 'admin') with check ((auth.jwt() ->> 'role') = 'admin');
+
+-- ============================================================
+-- DATA RETENTION (DEMO-15)
+-- Purge achievement records older than 1 academic year (365 days).
+-- Schedule via Supabase pg_cron: select cron.schedule('purge-old-achievements', '0 2 * * 0', 'select purge_old_achievements()');
+-- ============================================================
+create or replace function purge_old_achievements() returns void
+language plpgsql security definer as $$
+begin
+  delete from achievements where created_at < now() - interval '365 days';
+end;
+$$;

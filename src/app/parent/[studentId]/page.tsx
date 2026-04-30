@@ -42,13 +42,13 @@ export default async function ParentPage({
     )
   }
 
-  // Fetch recent achievements
+  // Fetch last 5 achievements (DEMO-06)
   const { data: achievements } = await supabase
     .from('achievements')
     .select('*')
     .eq('student_id', studentId)
     .order('created_at', { ascending: false })
-    .limit(10)
+    .limit(5)
 
   // Fetch all badges for progress bar calculation
   const { data: allBadges } = await supabase
@@ -56,11 +56,14 @@ export default async function ParentPage({
     .select('*')
     .order('points_required', { ascending: true })
 
-  // Fetch earned badge count
-  const { count: badgeCount } = await supabase
+  // Fetch earned badges with details (for badge list with tier icons, DEMO-06)
+  const { data: earnedBadges } = await supabase
     .from('student_badges')
-    .select('*', { count: 'exact', head: true })
+    .select('*, badge:badges(*)')
     .eq('student_id', studentId)
+    .order('earned_at', { ascending: false })
+
+  const badgeCount = earnedBadges?.length ?? 0
 
   const sortedBadges = (allBadges || []).sort(
     (a, b) => a.points_required - b.points_required
@@ -134,25 +137,24 @@ export default async function ParentPage({
               <p className="text-base mt-0.5" style={{ fontFamily: '"Comic Neue", cursive', color: '#BE123C' }}>
                 {student.grade}
               </p>
-              <div className="flex items-center gap-5 mt-3 flex-wrap">
-                <div className="flex items-center gap-2">
-                  <span
-                    className="text-2xl font-bold"
-                    style={{ fontFamily: '"Baloo 2", sans-serif', color: '#E11D48' }}
-                  >
-                    {student.total_points}
-                  </span>
-                  <span style={{ fontFamily: '"Comic Neue", cursive', color: '#FB7185' }}>points</span>
+              <div className="flex items-center gap-4 mt-3 flex-wrap">
+                <div className="flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-bold"
+                  style={{ background: '#FFF1F2', border: '1.5px solid #FECDD3', fontFamily: '"Baloo 2", sans-serif', color: '#E11D48' }}
+                >
+                  ⭐ {student.total_points} pts
                 </div>
-                <div className="flex items-center gap-2">
-                  <span
-                    className="text-2xl font-bold"
-                    style={{ fontFamily: '"Baloo 2", sans-serif', color: '#2563EB' }}
-                  >
-                    {badgeCount ?? 0}
-                  </span>
-                  <span style={{ fontFamily: '"Comic Neue", cursive', color: '#FB7185' }}>badges</span>
+                <div className="flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-bold"
+                  style={{ background: '#EFF6FF', border: '1.5px solid #BFDBFE', fontFamily: '"Baloo 2", sans-serif', color: '#1D4ED8' }}
+                >
+                  🏅 {badgeCount} badge{badgeCount !== 1 ? 's' : ''}
                 </div>
+                {(student.streak_count ?? 0) > 0 && (
+                  <div className="flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-bold"
+                    style={{ background: '#FFF8F0', border: '1.5px solid #FDE68A', fontFamily: '"Baloo 2", sans-serif', color: '#D97706' }}
+                  >
+                    🔥 {student.streak_count} day streak
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -203,13 +205,57 @@ export default async function ParentPage({
           </div>
         </div>
 
-        {/* Recent Achievements */}
+        {/* Earned Badges (DEMO-06) */}
+        {earnedBadges && earnedBadges.length > 0 && (
+          <div className="clay-card p-8 mb-6">
+            <h2
+              className="text-xl font-bold mb-5"
+              style={{ fontFamily: '"Baloo 2", sans-serif', color: '#881337' }}
+            >
+              Badges Earned ({earnedBadges.length})
+            </h2>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {earnedBadges.map((sb: { id: string; tier?: string; earned_at: string; badge?: { icon_emoji: string; name: string; description: string | null } }) => {
+                const tier = sb.tier ?? 'bronze'
+                const tierLabelMap: Record<string, string> = { gold: '🥇 Gold', silver: '🥈 Silver', bronze: '🥉 Bronze' }
+                const tierColorMap: Record<string, string> = { gold: '#FACC15', silver: '#9CA3AF', bronze: '#D97706' }
+                const color = tierColorMap[tier] ?? '#D97706'
+                return (
+                  <div
+                    key={sb.id}
+                    className="flex flex-col items-center p-4 rounded-2xl text-center"
+                    style={{
+                      background: 'linear-gradient(135deg, #FFF1F2, #FECDD3)',
+                      border: `2px solid ${color}44`,
+                      boxShadow: '0 2px 8px rgba(225,29,72,0.1)',
+                    }}
+                  >
+                    <span className="text-4xl mb-1 select-none">{sb.badge?.icon_emoji}</span>
+                    <span className="font-bold text-xs" style={{ fontFamily: '"Baloo 2", sans-serif', color: '#881337' }}>
+                      {sb.badge?.name}
+                    </span>
+                    <span className="text-xs font-bold mt-1 px-2 py-0.5 rounded-full"
+                      style={{ color, background: `${color}18`, border: `1px solid ${color}50`, fontFamily: '"Baloo 2", sans-serif' }}
+                    >
+                      {tierLabelMap[tier]}
+                    </span>
+                    <span className="text-xs mt-1" style={{ fontFamily: '"Comic Neue", cursive', color: '#FB7185' }}>
+                      {new Date(sb.earned_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Recent Achievements (last 5, DEMO-06) */}
         <div className="clay-card p-8">
           <h2
             className="text-xl font-bold mb-5"
             style={{ fontFamily: '"Baloo 2", sans-serif', color: '#881337' }}
           >
-            Recent Achievements
+            Recent Achievements (last 5)
           </h2>
           {(!achievements || achievements.length === 0) ? (
             <div className="text-center py-8">

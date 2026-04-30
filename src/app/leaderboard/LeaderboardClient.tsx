@@ -14,8 +14,12 @@ interface Student {
 }
 
 interface ClassRanking {
-  name: string
+  id: string
+  name?: string
+  className: string
+  teacherName: string
   totalPoints: number
+  weeklyPoints: number
   studentCount: number
   topEmoji: string
 }
@@ -45,7 +49,10 @@ export function LeaderboardClient({ students, classRankings }: Props) {
 
   const filteredClassRankings = classRankings.filter((c) => {
     if (!search) return true
-    return c.name.toLowerCase().includes(search.toLowerCase())
+    return (
+      c.className.toLowerCase().includes(search.toLowerCase()) ||
+      c.teacherName.toLowerCase().includes(search.toLowerCase())
+    )
   })
 
   return (
@@ -205,7 +212,7 @@ export function LeaderboardClient({ students, classRankings }: Props) {
           <div className="space-y-4">
             {filteredClassRankings.map((cls, index) => (
               <div
-                key={cls.name}
+                key={cls.id ?? cls.className}
                 className="p-5 rounded-2xl"
                 style={{
                   background: index === 0
@@ -217,39 +224,30 @@ export function LeaderboardClient({ students, classRankings }: Props) {
                     : '0 2px 8px rgba(225,29,72,0.08)',
                 }}
               >
-                <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-3">
                     <span className="text-2xl">{index < 3 ? rankEmojis[index] : `#${index + 1}`}</span>
                     <div>
-                      <p
-                        className="font-bold"
-                        style={{ fontFamily: '"Baloo 2", sans-serif', color: '#881337' }}
-                      >
-                        {cls.name}
+                      <p className="font-bold" style={{ fontFamily: '"Baloo 2", sans-serif', color: '#881337' }}>
+                        {cls.className}
                       </p>
-                      <p
-                        className="text-xs"
-                        style={{ fontFamily: '"Comic Neue", cursive', color: '#BE123C' }}
-                      >
-                        {cls.studentCount} student{cls.studentCount !== 1 ? 's' : ''}
+                      <p className="text-xs" style={{ fontFamily: '"Comic Neue", cursive', color: '#BE123C' }}>
+                        👩‍🏫 {cls.teacherName} · {cls.studentCount} student{cls.studentCount !== 1 ? 's' : ''}
                       </p>
                     </div>
                   </div>
-                  <div
-                    className="font-bold px-3 py-1 rounded-full text-sm"
-                    style={{
-                      fontFamily: '"Baloo 2", sans-serif',
-                      color: 'white',
-                      background: 'linear-gradient(135deg, #FB7185, #E11D48)',
-                    }}
-                  >
-                    {cls.totalPoints} pts
+                  <div className="flex flex-col items-end gap-1">
+                    <div className="font-bold px-3 py-0.5 rounded-full text-sm" style={{ fontFamily: '"Baloo 2", sans-serif', color: 'white', background: 'linear-gradient(135deg, #FB7185, #E11D48)' }}>
+                      {cls.totalPoints} pts total
+                    </div>
+                    {cls.weeklyPoints > 0 && (
+                      <div className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ fontFamily: '"Baloo 2", sans-serif', background: '#F0FDF4', color: '#16A34A', border: '1px solid #BBF7D0' }}>
+                        +{cls.weeklyPoints} this week
+                      </div>
+                    )}
                   </div>
                 </div>
-                <div
-                  className="w-full rounded-full h-3 overflow-hidden"
-                  style={{ background: '#F0ECF2' }}
-                >
+                <div className="w-full rounded-full h-3 overflow-hidden mt-2" style={{ background: '#F0ECF2' }}>
                   <div
                     className="h-3 rounded-full transition-all duration-700"
                     style={{
