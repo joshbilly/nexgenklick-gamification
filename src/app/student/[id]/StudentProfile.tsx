@@ -35,6 +35,39 @@ const tierColor: Record<string, string> = {
   bronze: '#D97706',
 }
 
+// Circular SVG progress ring (DEMO-05) — CSS/SVG, no third-party chart lib
+function ProgressRing({
+  percent,
+  color,
+  size = 52,
+}: {
+  percent: number
+  color: string
+  size?: number
+}) {
+  const r = (size - 6) / 2
+  const circ = 2 * Math.PI * r
+  const offset = circ * (1 - Math.min(100, percent) / 100)
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden="true">
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth={5} opacity={0.18} />
+      <circle
+        cx={size / 2}
+        cy={size / 2}
+        r={r}
+        fill="none"
+        stroke={color}
+        strokeWidth={5}
+        strokeLinecap="round"
+        strokeDasharray={circ}
+        strokeDashoffset={offset}
+        transform={`rotate(-90 ${size / 2} ${size / 2})`}
+        style={{ transition: 'stroke-dashoffset 0.7s ease' }}
+      />
+    </svg>
+  )
+}
+
 const categoryEmojis: Record<string, string> = {
   Science: '🔬',
   Math: '📐',
@@ -78,6 +111,7 @@ export function StudentProfile({
   studentCosmetics,
 }: StudentProfileProps) {
   const [totalPoints, setTotalPoints] = useState(student.total_points)
+  const [liveParticipations, setLiveParticipations] = useState<ChallengeParticipation[]>(challengeParticipations)
   const [showModal, setShowModal] = useState(false)
   const [showCosmeticModal, setShowCosmeticModal] = useState(false)
   const [celebration, setCelebration] = useState<{
@@ -91,22 +125,30 @@ export function StudentProfile({
     (StudentCosmetic & { cosmetic?: Cosmetic })[]
   >(studentCosmetics)
 
-  // Realtime subscription
+  // Realtime subscriptions — student points + challenge participation (DEMO-10)
   useEffect(() => {
     const supabase = createClient()
     const channel = supabase
-      .channel(`student-points-${student.id}`)
+      .channel(`student-live-${student.id}`)
       .on(
         'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'students',
-          filter: `id=eq.${student.id}`,
-        },
+        { event: 'UPDATE', schema: 'public', table: 'students', filter: `id=eq.${student.id}` },
         (payload) => {
           const updated = payload.new as Student
           setTotalPoints(updated.total_points)
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'challenge_participation', filter: `student_id=eq.${student.id}` },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            setLiveParticipations((prev) => [...prev, payload.new as ChallengeParticipation])
+          } else if (payload.eventType === 'UPDATE') {
+            setLiveParticipations((prev) =>
+              prev.map((p) => p.id === (payload.new as ChallengeParticipation).id ? (payload.new as ChallengeParticipation) : p)
+            )
+          }
         }
       )
       .subscribe()
@@ -340,16 +382,30 @@ export function StudentProfile({
                   <span className="ml-2 text-sm opacity-70">· {student.class_id}</span>
                 )}
               </p>
-              <div className="flex items-center gap-2 mt-3">
-                <span
-                  className="text-3xl font-bold"
-                  style={{ fontFamily: '"Baloo 2", sans-serif', color: '#E11D48' }}
+              <div className="flex items-center gap-4 mt-3 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <span
+                    className="text-3xl font-bold"
+                    style={{ fontFamily: '"Baloo 2", sans-serif', color: '#E11D48' }}
+                  >
+                    {totalPoints}
+                  </span>
+                  <span className="font-medium" style={{ fontFamily: '"Comic Neue", cursive', color: '#FB7185' }}>
+                    pts
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-bold"
+                  style={{ background: '#FFF1F2', border: '1.5px solid #FECDD3', fontFamily: '"Baloo 2", sans-serif', color: '#E11D48' }}
                 >
-                  {totalPoints}
-                </span>
-                <span className="font-medium" style={{ fontFamily: '"Comic Neue", cursive', color: '#FB7185' }}>
-                  points
-                </span>
+                  🏅 {earnedBadges.length} badge{earnedBadges.length !== 1 ? 's' : ''}
+                </div>
+                {(student.streak_count ?? 0) > 0 && (
+                  <div className="flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-bold"
+                    style={{ background: '#FFF8F0', border: '1.5px solid #FDE68A', fontFamily: '"Baloo 2", sans-serif', color: '#D97706' }}
+                  >
+                    🔥 {student.streak_count} day streak
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -424,7 +480,7 @@ export function StudentProfile({
             </h2>
             <div className="space-y-3">
               {challenges.map((challenge) => {
-                const participation = challengeParticipations.find(
+                const participation = liveParticipations.find(
                   (p) => p.challenge_id === challenge.id
                 )
                 const myCount = participation?.contribution_count || 0
@@ -673,26 +729,17 @@ export function StudentProfile({
                       {tierLabel[tier]}
                     </span>
 
-                    {/* Progress to next tier */}
+                    {/* Circular SVG progress ring toward next tier (DEMO-05) */}
                     {tier !== 'gold' && nextTierThreshold && (
-                      <div className="w-full mt-2">
-                        <div
-                          className="w-full rounded-full h-1.5 overflow-hidden"
-                          style={{ background: '#F0ECF2' }}
-                        >
-                          <div
-                            className="h-1.5 rounded-full"
-                            style={{
-                              width: `${progressPct}%`,
-                              background: `linear-gradient(90deg, ${tierColor[tier]}, ${tierColor[tier]}88)`,
-                            }}
-                          />
+                      <div className="flex flex-col items-center mt-2 relative">
+                        <div title={`${sb.progress ?? 0} / ${nextTierThreshold} for next tier`}>
+                          <ProgressRing percent={progressPct} color={tierColor[tier]} size={48} />
                         </div>
                         <p
                           className="text-xs mt-0.5"
                           style={{ fontFamily: '"Comic Neue", cursive', color: '#FB7185' }}
                         >
-                          {sb.progress}/{nextTierThreshold} to next tier
+                          {sb.progress ?? 0}/{nextTierThreshold}
                         </p>
                       </div>
                     )}

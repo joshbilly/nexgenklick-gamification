@@ -8,9 +8,11 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  BarChart,
-  Bar,
-  Cell,
+  RadarChart,
+  Radar,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
 } from 'recharts'
 
 interface WeeklyDataPoint {
@@ -113,30 +115,37 @@ export function AnalyticsCharts({ weeklyData, categoryData, totalAchievements }:
         )}
       </div>
 
-      {/* Subject Distribution */}
+      {/* Subject Distribution — RadarChart (DEMO-11) */}
       <div className="clay-card p-6">
         <h2
           className="text-lg font-bold mb-5"
           style={{ fontFamily: '"Baloo 2", sans-serif', color: '#881337' }}
         >
-          📚 Subject Distribution
+          🕸️ Subject Distribution
         </h2>
         {categoryData.length > 0 ? (
           <>
-            <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={categoryData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#FECDD3" />
-                <XAxis
+            <ResponsiveContainer width="100%" height={260}>
+              <RadarChart data={categoryData} margin={{ top: 10, right: 30, bottom: 10, left: 30 }}>
+                <PolarGrid stroke="#FECDD3" />
+                <PolarAngleAxis
                   dataKey="category"
-                  tick={{ fontFamily: '"Comic Neue", cursive', fontSize: 11, fill: '#BE123C' }}
-                  tickLine={false}
-                  axisLine={{ stroke: '#FECDD3' }}
+                  tick={{ fontFamily: '"Comic Neue", cursive', fontSize: 12, fill: '#881337' }}
+                  tickFormatter={(v) => `${categoryEmojis[v] ?? '📌'} ${v}`}
                 />
-                <YAxis
-                  allowDecimals={false}
-                  tick={{ fontFamily: '"Comic Neue", cursive', fontSize: 11, fill: '#BE123C' }}
-                  tickLine={false}
-                  axisLine={false}
+                <PolarRadiusAxis
+                  angle={30}
+                  domain={[0, 'auto']}
+                  tick={{ fontFamily: '"Comic Neue", cursive', fontSize: 10, fill: '#FB7185' }}
+                  tickCount={4}
+                />
+                <Radar
+                  name="Achievements"
+                  dataKey="count"
+                  stroke="#E11D48"
+                  fill="#E11D48"
+                  fillOpacity={0.25}
+                  dot={{ fill: '#E11D48', r: 4 }}
                 />
                 <Tooltip
                   contentStyle={{
@@ -148,16 +157,11 @@ export function AnalyticsCharts({ weeklyData, categoryData, totalAchievements }:
                   }}
                   formatter={(value) => [`${value} achievement${value !== 1 ? 's' : ''}`, 'Count']}
                 />
-                <Bar dataKey="count" radius={[8, 8, 0, 0]}>
-                  {categoryData.map((_, index) => (
-                    <Cell key={index} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Bar>
-              </BarChart>
+              </RadarChart>
             </ResponsiveContainer>
 
             {/* Legend */}
-            <div className="flex flex-wrap gap-2 mt-4">
+            <div className="flex flex-wrap gap-2 mt-2">
               {categoryData.map((item, index) => (
                 <div
                   key={item.category}
