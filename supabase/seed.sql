@@ -207,9 +207,9 @@ select 'a1b2c3d4-0010-0010-0010-000000000010', id, 'bronze', 3
 from badges where points_required <= 60;
 
 -- ── ACTIVE CHALLENGES (2) ────────────────────────────────────
-insert into challenges (title, description, deadline, target_count, category, is_class_wide, class_id, points_reward, created_by) values
-  ('Science Week Sprint',    'Submit 3 science achievements before the deadline!',  now() + interval '7 days',  3,  'Science', true, 'class-a', 25, 'seed'),
-  ('Math Mastery Marathon',  'Complete 5 math achievements this month.',            now() + interval '21 days', 5,  'Math',    true, 'class-b', 50, 'seed');
+insert into challenges (title, description, deadline, target_count, category, is_class_wide, class_id, created_by) values
+  ('Science Week Sprint',   'Submit 3 science achievements before the deadline!', now() + interval '7 days',  3, 'Science', true, 'class-a', 'seed'),
+  ('Math Mastery Marathon', 'Complete 5 math achievements this month.',           now() + interval '21 days', 5, 'Math',    true, 'class-b', 'seed');
 
 -- Seed challenge participation (Alex is in progress on Science challenge)
 insert into challenge_participation (challenge_id, student_id, contribution_count, completed)
