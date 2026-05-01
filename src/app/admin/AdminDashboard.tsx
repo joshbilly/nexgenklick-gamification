@@ -167,7 +167,7 @@ export function AdminDashboard({ students, weeklyData, categoryData }: Props) {
                   outerRadius={75}
                   dataKey="count"
                   nameKey="category"
-                  label={({ category, percent }) => `${categoryEmojis[category] ?? '📌'} ${(percent * 100).toFixed(0)}%`}
+                  label={({ name, percent }) => `${categoryEmojis[name as string] ?? '📌'} ${((percent ?? 0) * 100).toFixed(0)}%`}
                   labelLine={false}
                 >
                   {categoryData.map((_, i) => (
